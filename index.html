@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DanPaulsFX Bot</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f7f7f7; padding: 20px; }
+    input, select, button { width: 100%; padding: 10px; margin-top: 10px; }
+    #log { background: #111; color: #0f0; padding: 10px; height: 250px; overflow-y: scroll; font-family: monospace; margin-top: 15px; }
+    canvas { background: #fff; border: 1px solid #ccc; width: 100%; height: 150px; margin-top: 15px; }
+  </style>
+</head>
+<body>
+  <h2>📈 DanPaulsFX Web Bot</h2>
+
+  <label>🔑 Deriv API Token:</label>
+  <input type="text" id="token" placeholder="Paste your token" />
+
+  <label>💹 Select Asset:</label>
+  <select id="asset">
+    <option value="R_10">R_10</option>
+    <option value="R_25">R_25</option>
+    <option value="R_50">R_50</option>
+    <option value="R_75">R_75</option>
+    <option value="R_100">R_100</option>
+    <option value="1HZ10V">Volatility 10 (1s)</option>
+    <option value="1HZ25V">Volatility 25 (1s)</option>
+    <option value="1HZ50V">Volatility 50 (1s)</option>
+    <option value="1HZ75V">Volatility 75 (1s)</option>
+    <option value="1HZ100V">Volatility 100 (1s)</option>
+  </select>
+
+  <label>💰 Stake:</label>
+  <input type="number" id="stake" placeholder="e.g. 0.35" step="0.01" />
+
+  <button onclick="startBot()">▶️ Start Bot</button>
+  <button onclick="stopBot()">🛑 Stop Bot</button>
+
+  <canvas id="chart"></canvas>
+
+  <pre id="log">📋 Bot logs will appear here...</pre>
+
+  <script>
+    let interval, token, asset, stake;
+    let prices = [];
+
+    function log(msg) {
+      const logEl = document.getElementById("log");
+      logEl.textContent += `\n${msg}`;
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function drawChart() {
+      const canvas = document.getElementById("chart");
+      const ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (prices.length < 2) return;
+      const max = Math.max(...prices);
+      const min = Math.min(...prices);
+      const range = max - min;
+      const widthStep = canvas.width / prices.length;
+
+      ctx.beginPath();
+      ctx.moveTo(0, canvas.height - ((prices[0] - min) / range) * canvas.height);
+      prices.forEach((p, i) => {
+        const y = canvas.height - ((p - min) / range) * canvas.height;
+        ctx.lineTo(i * widthStep, y);
+      });
+      ctx.strokeStyle = "#007bff";
+      ctx.stroke();
+    }
+
+    async function getLatestPrice() {
+      try {
+        const response = await fetch("https://danpaulsfx.onrender.com/ws-proxy", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            commands: [
+              { authorize: token },
+              { ticks: asset }
+            ]
+          })
+        });
+
+        const result = await response.json();
+        if (result.result && result.result[0].tick) {
+          const price = parseFloat(result.result[0].tick.quote);
+          prices.push(price);
+          if (prices.length > 50) prices.shift();
+          drawChart();
+          log(`💹 Price: ${price}`);
+        } else {
+          log("⚠️ Failed to fetch price");
+        }
+      } catch (err) {
+        log("❌ Error: " + err.message);
+      }
+    }
+
+    function startBot() {
+      token = document.getElementById("token").value.trim();
+      asset = document.getElementById("asset").value;
+      stake = parseFloat(document.getElementById("stake").value);
+
+      if (!token || !asset || isNaN(stake)) {
+        alert("⚠️ Please fill all fields correctly");
+        return;
+      }
+
+      prices = [];
+      document.getElementById("log").textContent = "🚀 Starting DanPaulsFX Bot...";
+      interval = setInterval(getLatestPrice, 5000);
+    }
+
+    function stopBot() {
+      clearInterval(interval);
+      log("🛑 Bot stopped");
+    }
+  </script>
+</body>
+</html>
