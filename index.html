@@ -72,17 +72,15 @@
     }
 
     async function getLatestPrice() {
-      try {
-        const response = await fetch("https://danpaulsfx.onrender.com/ws-proxy", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            commands: [
-              { authorize: token },
-              { ticks: asset }
-            ]
-          })
-        });
+  try {
+    const response = await fetch("https://danpaulsfx.onrender.com/ws-proxy", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        token: token,
+        asset: asset
+      })
+    });
 
         const result = await response.json();
         if (result.result && result.result[0].tick) {
